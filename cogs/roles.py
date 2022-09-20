@@ -3,7 +3,7 @@ import interactions
 from interactions import *
 
 GUILD_ID =1020765433395163168
-class Roles(interactions.Extension): # inherits interactions' Extentsion
+class Roles(interactions.Extension): # inherits interactions' Extension
     
     def __init__(self, bot):
         self.bot = bot
