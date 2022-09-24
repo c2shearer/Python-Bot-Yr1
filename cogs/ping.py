@@ -8,7 +8,7 @@ class Ping(interactions.Extension):
         self.bot = bot
      
     @interactions.extension_command(name="ping", scope=GUILD_ID)
-    async def PingCommand(ctx: interactions.CommandContext): 
+    async def PingCommand(self, ctx: interactions.CommandContext): 
         await ctx.send("🏓 Ping Pong!  {0}".format(round(bot.latency, 1)))
 
 def setup(bot):
