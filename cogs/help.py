@@ -24,6 +24,7 @@ HELP_CHANNELS = [1024112753046208642,1024112754803613748,1024112756552634479,102
 cdRole = 1023272185365803120
 avaliable = 1021480541444386977
 dormant = 1021480689557848064
+default_role = 1020765433395163168
 occupiedChannels = (("Computer Science", 1023280589106847796), ("Software Engineering", 1023281071074324520), ("Cyber Security", 1021480634616643654), ("Networking", 1023280720833171546),("Data Science", 1023281235507814461))
 helpRoles = (1023272369919369397,1023272366656208977,1023272353104400424,1023272346762629141,1023272346762629141,1023272335660302487,1023272328248971335)
 host = "localhost"
@@ -47,15 +48,14 @@ class Help(interactions.Extension):
             #with open("resources/databases/questions.json", "r") as F:
                 #self.questions = json.load(F)
             
-            self.channelExpiration.start()
+        
         @interactions.extension_listener()
         async def on_start(self):
             self.guild = await interactions.get(self.bot, interactions.Guild, object_id=guild_id)
             self.cdRole = await interactions.get(self.bot, interactions.Role, object_id=1023272185365803120, parent_id=guild_id)
-            self.channelExpiration.start()
+            self.channelExpiration.start(self)
         @interactions.extension_command(name="deletechannels", scope=guild_id,default_member_permissions=interactions.Permissions.ADMINISTRATOR)
         async def deleteChannels(self,ctx):
-            print("hi")
             await ctx.defer()
             channels = await self.getCatChannels(dormant)
             print(channels)
@@ -67,7 +67,7 @@ class Help(interactions.Extension):
         @interactions.extension_command(name="createchannels", scope=guild_id,default_member_permissions=interactions.Permissions.ADMINISTRATOR)
         async def createChannels(self, ctx):
             await ctx.defer()
-            overwrites = [Overwrite(id=1020765433395163168, type=0, deny=2048)]
+            overwrites = [Overwrite(id=default_role, type=0, deny=2048)]
             for word in helpChannelNames: # creates 26 channels with different tree names
                 
                 name ="help-" + word.lower() # etc help-oak
@@ -120,13 +120,13 @@ interactions.Option(name="amount", description="The amount of exp",required=True
         @interactions.extension_command(name="selfishclose",scope=guild_id, description="Closes the current help channel without rewarding anyone :(")
         async def selfishClose(self, ctx):
             await ctx.get_channel()
-            if int(ctx.channel.id) not in HELP_CHANNELS:
+            if int(ctx.channel.id) in HELP_CHANNELS:
                 
                 message = await ctx.channel.get_pinned_messages()
-                message = message[0]
-                if message.author.id == ctx.author.id:
+                #message = message[0]
+                if ctx.author.id == ctx.author.id:
 
-                    await message.unpin()
+                    #await message.unpin()
                     await ctx.send("Closing help channel.")
                     await self.markAsDormant(ctx.channel)
                 else:
@@ -261,22 +261,23 @@ interactions.Option(name="amount", description="The amount of exp",required=True
 
 
                             await member.send(embeds=embed) #Sends a direct message to the person claiming the channel with all the info
-                            self.questions[str(msg.channel.id)] = {}
-                            self.questions[str(msg.channel.id)]["owner"] = msg.author.id
-                            self.questions[str(msg.channel.id)]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
-                            self.questions[str(msg.channel.id)]["messageId"] = msg.id
-                            self.questions[str(msg.channel.id)]["helpers"] = {}
+                            self.questions[str(int(channel.id))] = {}
+                            self.questions[str(int(channel.id))]["owner"] = int(msg.author.id)
+                            self.questions[str(int(channel.id))]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
+                            self.questions[str(int(channel.id))]["messageId"] = int(msg.id)
+                            self.questions[str(int(channel.id))]["helpers"] = {}
+                            print(self.questions)
                             with open("resources/questions.json", "w") as F: # In case the bot goes down while this is running we store it in a file
                                 
                                 json.dump(self.questions, F)
-                            dormantChannels= self.getCatChannels(dormant.id)
+                            dormantChannels= await self.getCatChannels(dormant)
                             newAvaliableChannel = dormantChannels[0] #Selects the next dormant channel that is ready to be moved to avaliable
-                            await newAvaliableChannel.modify(permission_overwrites=[Overwrite(id=cdRole, type=0, deny=65536), Overwrite(id=1020765433395163168, type=0, deny=67584)])  # Students should be allowed to send messages and avaliable channels should be hidden to people with the cooldown role
+                            #await newAvaliableChannel.modify(permission_overwrites=[Overwrite(id=cdRole, type=0, deny=65536), Overwrite(id=1020765433395163168, type=0, deny=67584)])  # Students should be allowed to send messages and avaliable channels should be hidden to people with the cooldown role
                             
                             avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (SUBJECT) then your question after. \
                                                             For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?*\n\n Alternatively, if your question isnt tied to a subject just add (GENERAL)  \
                                                                 before your question for example:\n\n*(GENERAL) Where is the assembly today taking place?*\n\n hopefully someone can help!", colour=0x3ee800)
-                            await newAvaliableChannel.edit(overwrites=overwrites)
+                            await newAvaliableChannel.modify(permission_overwrites=overwrites)
     
                             await newAvaliableChannel.modify(parent_id=avaliable)
                             await newAvaliableChannel.send(embeds=avaliableEmbed)
@@ -291,12 +292,12 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                         await member.send("Make sure you put the subject name before your question! For example:\n\n (Software engineering) How can I use the binomial infinite series to estimate pi? \n\n")
                 elif channel.parent_id in occChannels:
 
-                    self.questions[str(msg.channel.id)]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
+                    self.questions[str(channel.id)]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
                     
                     if str(msg.author.id) not in self.questions[str(msg.channel.id)]["helpers"].keys():
-                        self.questions[str(msg.channel.id)]["helpers"][str(msg.author.id)] = 1
+                        self.questions[str(channel.id)]["helpers"][str(msg.author.id)] = 1
                     else:
-                        self.questions[str(msg.channel.id)]["helpers"][str(msg.author.id)] +=1
+                        self.questions[str(channel.id)]["helpers"][str(msg.author.id)] +=1
                     
                     with open("resources/databases/questions.json", "w") as F:
                         json.dump(self.questions, F)
@@ -317,6 +318,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
             deleteList = [] 
             global BASE_REWARD
             for k, v in self.questions.items():
+                print(v)
                 lastMessageDate = datetime(v["lastMessage"][0],v["lastMessage"][1],v["lastMessage"][2],v["lastMessage"][3],v["lastMessage"][4])
                 
                 expire = datetime.utcnow() + timedelta(minutes=2)
@@ -352,34 +354,24 @@ interactions.Option(name="amount", description="The amount of exp",required=True
 
         async def cooldown(self, member):
             global cooldownTime
-            await member.add_roles(self.cdRole)
+            
+            await self.guild.add_member_role(role=self.cdRole, member_id=member.id)
             await asyncio.sleep(cooldownTime)
-            await member.remove_roles(self.cdRole)
+            await self.guild.remove_member_role(role=self.cdRole, member_id=member.id)
 
         async def markAsDormant(self, channel): # This is to mark a channel as dormant
             
-            records = cur.fetchall()
             valid = False
-            for g, c in records: # Guild, channel
-                if c == channel.id: # checking if the channel stored in the database is the same as the channel given to the procedure?
-                    valid = True
-                    
-                    break
-            if not valid: # If there is no record of the channel in our list then we raise an error
+            print(channel.id)
+            if int(channel.id) not in HELP_CHANNELS:
                 raise ValueError("Channel is not in help_channels")
         
             dormantEmbed = interactions.Embed(title="This help channel is dormant.", description="If you need help look at the avaliable channels category for more do the \
                                 command /howtogethelp!", colour = 0xff2b2b)         
+            await channel.send(embeds=dormantEmbed)
+            overwrite = [Overwrite(id=default_role,type=0, allow=2048),Overwrite(id=default_role,type=0, allow=2048)]
 
-
-            overwrites= {sRole: discord.PermissionOverwrite(read_messages=True, send_messages=False)}
-            await channel.edit(category=dormant, overwrites=overwrites)
-            await channel.send(embed=dormantEmbed)
-                        
-            overwrite = Overwrite()
-            overwrite.send_messages = False
-            overwrite.read_messages = True
-            await channel.set_permissions(sRole, overwrite=overwrite)
+            await channel.modify(permission_overwrites=overwrite, parent_id=1021480689557848064)
 
 
 
