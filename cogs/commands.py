@@ -27,6 +27,10 @@ class Ping(interactions.Extension):
         skipdesc = False if skipdesc is None else skipdesc    
         async def waitForMessage():
             def check(m):
+    <<<<<<< HEAD
+=======
+                print(m.content)
+>>>>>>> 344b9bb0c4e47aaeb0bb607daff9b0e3df06ae48
                 return m.author.id == ctx.author.id and m.channel_id == ctx.channel.id
 
             try:
@@ -43,7 +47,11 @@ class Ping(interactions.Extension):
                 "Send a message of the content of this announcement! (You can use any text modifications such as **BOLD** and __underline__)")
             message = await waitForMessage()
             description = message.content
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 344b9bb0c4e47aaeb0bb607daff9b0e3df06ae48
         else:
             description = ""
         embed = interactions.Embed(title=title, description=description)
@@ -69,7 +77,11 @@ class Ping(interactions.Extension):
         def check(button_ctx):
             print(button_ctx.author.id == ctx.author.id)
             return button_ctx.author.id == ctx.author.id
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 344b9bb0c4e47aaeb0bb607daff9b0e3df06ae48
         buttonCtx: ComponentContext = await self.bot.wait_for_component(components=row,check=check)
         confirmed = False
         while not confirmed:
@@ -104,7 +116,11 @@ class Ping(interactions.Extension):
                     index = len(embed.fields) -1
                     embed.remove_field(index)
                     await buttonCtx.edit(embeds=embed)
+<<<<<<< HEAD
                     
+=======
+
+>>>>>>> 344b9bb0c4e47aaeb0bb607daff9b0e3df06ae48
             else:
 
                 delMessage = await ctx.channel.send("What is the title of the field?")
@@ -126,7 +142,11 @@ class Ping(interactions.Extension):
 
 
             buttonCtx: ComponentContext = await self.bot.wait_for_component(components=row)   
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 344b9bb0c4e47aaeb0bb607daff9b0e3df06ae48
 
 def setup(bot):
     Ping(bot)
