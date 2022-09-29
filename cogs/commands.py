@@ -1,5 +1,5 @@
 import interactions
-
+import asyncio
 GUILD_ID = 1020765433395163168
 
 class Ping(interactions.Extension):
