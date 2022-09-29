@@ -25,7 +25,6 @@ class Ping(interactions.Extension):
         skipdesc = False if skipdesc is None else skipdesc    
         async def waitForMessage():
             def check(m):
-                print(m.content)
                 return m.author.id == ctx.author.id and m.channel_id == ctx.channel.id
 
             try:
