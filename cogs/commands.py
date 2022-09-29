@@ -1,5 +1,7 @@
 import interactions
+import asyncio
 from interactions.ext.wait_for import wait_for
+import re
 GUILD_ID = 1020765433395163168
 
 class Ping(interactions.Extension):
