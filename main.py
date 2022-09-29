@@ -5,7 +5,7 @@ import configparser as cp
 #from interactions.ext.wait_for import setup
 from dotenv import load_dotenv
 
-
+from interactions.ext.wait_for import setup
 import interactions
 import os
 from threading import Thread
@@ -43,6 +43,7 @@ def main():
     TOKEN = os.getenv("DISCORD_TOKEN")
     intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MESSAGE_CONTENT
     bot = interactions.Client(TOKEN,disable_sync=False,intents=intents)
+    setup(bot)
     #setupLogging()
 
 
