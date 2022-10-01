@@ -2,11 +2,13 @@
 import sqlite3
 import asyncio
 import logging
+from dotenv import load_dotenv
 import logging.handlers
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 import interactions
 from interactions.api.models.misc import Overwrite
 import io
+import os
 import re
 import json
 from datetime import timedelta
@@ -29,12 +31,17 @@ occupiedChannels = (("Computer Science", 1023280589106847796), ("Software Engine
 helpRoles = (1023272369919369397,1023272366656208977,1023272353104400424,1023272346762629141,1023272346762629141,1023272335660302487,1023272328248971335)
 host = "localhost"
 host = "212.111.42.251"
+load_dotenv()
+
+USER = os.getenv("MYSQL_USER")
+PASSWD  = os.getenv("MYSQL_PASS")
+
 def connect(host):
     global con
     con = mysql.connector.connect(
         host=host,
-        user="sneaky",
-        passwd="Dominus7206!",
+        user=USER,
+        passwd=PASS,
         database="FYdatabase"
     )
     cur = con.cursor(buffered=True)
