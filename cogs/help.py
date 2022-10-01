@@ -1,5 +1,6 @@
 
-import sqlite3
+import mysql.connector
+import csv
 import asyncio
 import logging
 import logging.handlers
@@ -7,6 +8,8 @@ from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 import interactions
 from interactions.api.models.misc import Overwrite
 import io
+import os
+from dotenv import load_dotenv
 import re
 import json
 from datetime import timedelta
@@ -29,12 +32,17 @@ occupiedChannels = (("Computer Science", 1023280589106847796), ("Software Engine
 helpRoles = (1023272369919369397,1023272366656208977,1023272353104400424,1023272346762629141,1023272346762629141,1023272335660302487,1023272328248971335)
 host = "localhost"
 host = "212.111.42.251"
+load_dotenv()
+
+USER = os.getenv("MYSQL_USER")
+PASSWD  = os.getenv("MYSQL_PASS")
+
 def connect(host):
     global con
     con = mysql.connector.connect(
         host=host,
-        user="sneaky",
-        passwd="Dominus7206!",
+        user=USER,
+        passwd=PASS,
         database="FYdatabase"
     )
     cur = con.cursor(buffered=True)
@@ -64,35 +72,37 @@ class Help(interactions.Extension):
                 await asyncio.sleep(0.2)
         
         
-        @interactions.extension_command(name="createchannels", scope=guild_id,default_member_permissions=interactions.Permissions.ADMINISTRATOR)
-        async def createChannels(self, ctx):
-            await ctx.defer()
-            overwrites = [Overwrite(id=default_role, type=0, deny=2048)]
-            for word in helpChannelNames: # creates 26 channels with different tree names
+        # @interactions.extension_command(name="createchannels", scope=guild_id,default_member_permissions=interactions.Permissions.ADMINISTRATOR)
+        # async def createChannels(self, ctx):
+        #     await ctx.defer()
+        #     overwrites = [Overwrite(id=default_role, type=0, deny=2048)]
+        #     for word in helpChannelNames: # creates 26 channels with different tree names
                 
-                name ="help-" + word.lower() # etc help-oak
+        #         name ="help-" + word.lower() # etc help-oak
                 
-                channel = await self.guild.create_channel(name=name, topic=f"The {word} help channel", permission_overwrites=overwrites, type=interactions.api.models.channel.ChannelType.GUILD_TEXT, parent_id=dormant)
+        #         channel = await self.guild.create_channel(name=name, topic=f"The {word} help channel", permission_overwrites=overwrites, type=interactions.api.models.channel.ChannelType.GUILD_TEXT, parent_id=dormant)
                 
-                avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (SUBJECT) then your question after. \
-                                            For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?*\n\n Alternatively, if your question isnt tied to a subject just add (GENERAL)  \
-                                                before your question for example:\n\n*(GENERAL) Where is the assembly today taking place?*\n\n hopefully someone can help!", colour=0x3ee800)
-                dormantEmbed = interactions.Embed(title="This help channel is dormant.", description="If you need help look at the avaliable channels category for more do the \
-                    command /howtogethelp!", colour = 0xff2b2b)
-                await asyncio.sleep(0.2)
+        #         avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (SUBJECT) then your question after. \
+        #                                     For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?*\n\n Alternatively, if your question isnt tied to a subject just add (GENERAL)  \
+        #                                         before your question for example:\n\n*(GENERAL) Where is the assembly today taking place?*\n\n hopefully someone can help!", colour=0x3ee800)
+        #         dormantEmbed = interactions.Embed(title="This help channel is dormant.", description="If you need help look at the avaliable channels category for more do the \
+        #             command /howtogethelp!", colour = 0xff2b2b)
+        #         await asyncio.sleep(0.2)
 
                 
-            channels = await self.getCatChannels(dormant)
-            for x in range(3): # This will move 3 channels from dormant to avaliable category and send the avaliable embed.
-                channels = await self.getCatChannels(dormant)
-                channel= channels[0]
-                await channel.modify(parent_id=avaliable, permission_overwrites=overwrites)
-                await channel.send(embeds=avaliableEmbed)
-                await asyncio.sleep(0.2) # A little bit of delay so discord doesnt rate limit us.
-            channels = await self.getCatChannels(dormant)
-            for channel in channels: #The rest of the channel we will send the dormant embed
-                await channel.send(embeds=dormantEmbed)
-                await asyncio.sleep(0.2)                
+        #     channels = await self.getCatChannels(dormant)
+        #     for x in range(3): # This will move 3 channels from dormant to avaliable category and send the avaliable embed.
+        #         channels = await self.getCatChannels(dormant)
+        #         channel= channels[0]
+        #         await channel.modify(parent_id=avaliable, permission_overwrites=overwrites)
+        #         await channel.send(embeds=avaliableEmbed)
+        #         await asyncio.sleep(0.2) # A little bit of delay so discord doesnt rate limit us.
+        #     channels = await self.getCatChannels(dormant)
+        #     for channel in channels: #The rest of the channel we will send the dormant embed
+        #         await channel.send(embeds=dormantEmbed)
+        #         await asyncio.sleep(0.2) 
+        
+                       
         @interactions.extension_command(name="exp", scope=guild_id, default_member_permissions=interactions.Permissions.ADMINISTRATOR, description="Describes how to get help", options = [interactions.Option(name="member", description="The person you want to give exp",required=True, type=interactions.OptionType.USER),
 interactions.Option(name="amount", description="The amount of exp",required=True, type=interactions.OptionType.INTEGER)])
         async def exp(self, ctx, member, amount):
@@ -137,21 +147,23 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                                                                                 interactions.Option(name="helper",description="Specify the person who helped you",required=True,type=interactions.OptionType.USER),
                                                                                 interactions.Option(name="rating",description="How much did this person help you? 1-10",required=False,type=interactions.OptionType.INTEGER)])
         async def close(self, ctx, helper, rating=None):
+            cur = connect(host)
             global BASE_REWARD
             rating = 5 if rating is None else rating
             if rating <1 or rating >10:
                 await ctx.send("Thats not a rating between 1 and 10!")
                 return
             await ctx.get_guild()
-            cur.execute(f"SELECT * FROM helpLevels WHERE memberId = {helper.id}")
+            id = int(helper.id)
+            cur.execute(f"SELECT * FROM helpLevels WHERE helperId = {id}")
             if cur.fetchone() is None:
-                cur.execute("INSERT INTO helpLevels VALUES (?,?,?,?)", (helper.id, 0,0,1))
-                record = (helper.id,0,0,1)
+                cur.execute("INSERT INTO helpLevels VALUES (%s,%s,%s,%s)", (id, 0,0,1))
+                record = (id,0,0,1)
             else:
                 record = cur.fetchone()
 
-            if int(ctx.channel.id) not in HELP_CHANNELS:
-                helpers = self.questions[str(ctx.channel.id)]["helpers"]
+            if int(ctx.channel.id) in HELP_CHANNELS:
+                helpers = self.questions[str(int(ctx.channel.id))]["helpers"]
                 if str(helper.id) not in helpers.keys():
                     await ctx.send("This person did not help you!")
                     return
@@ -172,6 +184,8 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     await ctx.send("You can't close someone elses help channel!")
             else:
                 await ctx.send("This is not a help channel!")
+            con.close()
+            
         @interactions.extension_command(name="rank",scope=guild_id, description="Specifies the rank of you or another member", options=[interactions.Option(name="member",description="You can specify a member you want to see the rank of",required=False,type=interactions.OptionType.USER)])
         async def rank(self, member=None):
             if member is None:
@@ -185,27 +199,33 @@ interactions.Option(name="amount", description="The amount of exp",required=True
 
             buffer = await self.getRankImage(member, record[2], record[4], record[3], ctx.guild)
             await ctx.send(file=File(buffer, "rank.png"))
+            cur.close()
+            con.close()
 
-
-        async def getCatChannels(self, parent):
-            channelArr = await self.guild.get_all_channels()
+        async def getCatChannels(self, parent, all_channels=None): ## get all channels in a specific catagory
+            
+            if all_channels is None:
+                all_channels = await self.guild.get_all_channels()
             channels = []
-            for channel in channelArr:
+            for channel in all_channels:
                 if channel.parent_id == parent:
                     channels.append(channel)
+
             
             return channels
-        async def getOccupiedChannels(self):
+        async def getOccupiedChannels(self):##get all occupied channels
             channels = []
+            all_channels = await self.guild.get_all_channels()
             for channel in occupiedChannels:
-                chanList = await self.getCatChannels(channel)
+                await asyncio.sleep(0.1)
+                chanList = await self.getCatChannels(channel, all_channels)
             
                 channels+=chanList
             return channels
                 
         @interactions.extension_listener()
         async def on_message_create(self, msg): # Everytime a message is sent in a channel the bot can see
-            occChannels = await self.getOccupiedChannels()
+            
             member = await interactions.get(self.bot, interactions.Member, object_id=msg.author.id, parent_id=guild_id)
 
             channel = await interactions.get(self.bot, interactions.Channel, object_id=msg.channel_id)
@@ -216,9 +236,9 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 return
             else:
                 guild = self.guild
-                
+                occChannels = await self.getOccupiedChannels()
 
-          
+
                 avaliableOb = await interactions.get(self.bot, interactions.Channel, object_id=avaliable)
                 dormantOb = await interactions.get(self.bot, interactions.Channel, object_id=dormant)
                 
@@ -233,9 +253,8 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     subMatch = re.search("\((\D+)\)", prefix)  # Checking if the first word of the sentence is (WORD) so the person has the right syntax
                     print(prefix)
                     if subMatch: #If it matches
-                        print("hi")
                         sub = subMatch.group(1)
-                       
+                        
                         subject = None
                         for x in range(len(occupiedChannels)):
                             if occupiedChannels[x][0].lower() == sub.lower():
@@ -284,7 +303,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                             await self.cooldown(msg.author)
                         else:
                            
-                            await member.send("That is not a subject the school has registered! If you believe this is in error tell managers to add this subject.")
+                            await member.send("That is not a that has been registered! If you believe this is in error tell managers to add this subject.")
                             await msg.delete()
                            
                     else:
@@ -295,9 +314,10 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     self.questions[str(channel.id)]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
                     
                     if str(msg.author.id) not in self.questions[str(msg.channel.id)]["helpers"].keys():
-                        self.questions[str(channel.id)]["helpers"][str(msg.author.id)] = 1
+                        self.questions[str(channel.id)]["helpers"][str(int(msg.author.id))] = 1
                     else:
-                        self.questions[str(channel.id)]["helpers"][str(msg.author.id)] +=1
+                        self.questions[str(channel.id)]["helpers"][str(int(msg.author.id))] +=1
+                    print(self.questions)
                     
                     with open("resources/databases/questions.json", "w") as F:
                         json.dump(self.questions, F)
@@ -369,7 +389,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
             dormantEmbed = interactions.Embed(title="This help channel is dormant.", description="If you need help look at the avaliable channels category for more do the \
                                 command /howtogethelp!", colour = 0xff2b2b)         
             await channel.send(embeds=dormantEmbed)
-            overwrite = [Overwrite(id=default_role,type=0, allow=2048),Overwrite(id=default_role,type=0, allow=2048)]
+            overwrite = [Overwrite(id=default_role,type=0, allow=65536),Overwrite(id=default_role,type=0, deny=2048)]
 
             await channel.modify(permission_overwrites=overwrite, parent_id=1021480689557848064)
 
@@ -384,6 +404,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
             if record is None:
                 cur.execute("INSERT INTO helpLevels VALUES (?,?,?,?,?)", (helper.id, guild.id, 0,0,1))
                 record = (helper.id, guild.id, 0,0,1)
+
 
                 
                 
@@ -436,7 +457,8 @@ interactions.Option(name="amount", description="The amount of exp",required=True
 
             cur.execute(f"UPDATE helpLevels SET exp = {exp}, peopleHelped = {helped}, level = {level} WHERE helperId = {helper.id}", )
 
-
+            cur.close()
+            con.close()
 
         async def getRankImage(self,member, exp,  level, guild):
                 def drawProgressBar(d, x, y, w, h, progress, bg="black", fg="#a400fc"):
