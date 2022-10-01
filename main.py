@@ -41,6 +41,7 @@ def setupLogging():
     
 def main():
     load_dotenv()
+    config.Load(os.getenv("DISCORD_CONFIG_FILE") or "config.ini")
     TOKEN = os.getenv("DISCORD_TOKEN")
     intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MESSAGE_CONTENT
     bot = interactions.Client(TOKEN,disable_sync=False,intents=intents)
