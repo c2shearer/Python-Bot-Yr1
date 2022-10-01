@@ -2,7 +2,11 @@ import interactions
 from interactions.ext.wait_for import wait_for
 import asyncio
 
-GUILD_ID = 1020765433395163168
+import config
+
+cfg = config.Get();
+
+GUILD_ID = cfg["general"]["guild_id"]
 
 class Ping(interactions.Extension):
 

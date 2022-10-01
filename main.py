@@ -1,6 +1,5 @@
 
 import asyncio
-import configparser as cp
 #from interactions.ext import wait_for
 #from interactions.ext.wait_for import setup
 from dotenv import load_dotenv
@@ -15,12 +14,14 @@ import sqlite3
 import logging
 import logging.handlers
 
+import config
+
 def loadExtentions(bot):
     logger = logging.getLogger('bot')
     logger.debug("========================RESTART===========================")
-    config = cp.ConfigParser()
-    config.read("config.ini")
-    extentions = config["cogs"]
+
+    cfg = config.Get()
+    extentions = cfg["cogs"]
 
     for ext in extentions:
         try:
