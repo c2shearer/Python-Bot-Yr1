@@ -143,7 +143,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 
                 message = await ctx.channel.get_pinned_messages()
                 message = message[0]
-                if ctx.author.id == ctx.author.id:
+                if ctx.author.id == message.author.id:
 
                     await message.unpin()
                     await ctx.send("Closing help channel.")
