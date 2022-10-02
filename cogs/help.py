@@ -41,6 +41,11 @@ load_dotenv()
 USER = os.getenv("MYSQL_USER")
 PASSWD  = os.getenv("MYSQL_PASS")
 
+load_dotenv()
+
+USER = os.getenv("MYSQL_USER")
+PASSWD  = os.getenv("MYSQL_PASS")
+
 def connect(host):
     global con
     con = mysql.connector.connect(
