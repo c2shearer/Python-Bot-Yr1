@@ -15,6 +15,7 @@ import os
 from dotenv import load_dotenv
 import re
 import json
+import config
 from datetime import timedelta
 from datetime import datetime
 cooldownTime = 30 *60
@@ -22,6 +23,12 @@ logger = logging.getLogger("bot")
 from interactions.ext.tasks import create_task, IntervalTrigger
 helpChannelNames = ["Ash", "Birch", "Cedar", "Dragon", "Elm", "Fir","Garjan", "Hazel", "Ivorypalm", "Juniper", "Kapok", "Locust", "Mombin","Nutmeg", "Oak", "Palm","Sapel", \
                     "Teak", "Upas", "Wingnut", "Yew", "Zelkova" ] 
+BASE_REWARD = 250
+
+cfg = config.Get();
+guild_id = cfg["general"]["guild_id"]
+
+=======
 BASE_REWARD = 150
 guild_id = 1020765433395163168 
 HELP_CHANNELS = [1024112753046208642,1024112754803613748,1024112756552634479,1024112758758846565,1024112760839217254,1024112762588246026,1024112764916080660, \
@@ -30,7 +37,7 @@ HELP_CHANNELS = [1024112753046208642,1024112754803613748,1024112756552634479,102
 cdRole = 1023272185365803120
 avaliable = 1021480541444386977
 dormant = 1021480689557848064
-default_role = 1020765433395163168
+default_role = guild_id
 occupiedChannels = (("Computer Science", 1023280589106847796), ("Software Engineering", 1023281071074324520), ("Cyber Security", 1021480634616643654), ("Networking", 1023280720833171546),("Data Science", 1023281235507814461))
 helpRoles = (1023272369919369397,1023272366656208977,1023272353104400424,1023272346762629141,1023272346762629141,1023272335660302487,1023272328248971335)
 subjectRoles= (("cybersec",1021084982434861126), ("softeng",1021076439161909278), ("network", 1021085196835094546), ("data",1021085108809236510), ("compsci", 1021076502357483520), ("computing", 1021076473068666991))

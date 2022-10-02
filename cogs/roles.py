@@ -1,8 +1,12 @@
 
 import interactions
 from interactions import *
+import config
 
-GUILD_ID =1020765433395163168
+cfg = config.Get();
+
+GUILD_ID = cfg["general"]["guild_id"]
+
 class Roles(interactions.Extension): # inherits interactions' Extension
     
     def __init__(self, bot):
