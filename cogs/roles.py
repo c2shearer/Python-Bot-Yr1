@@ -52,7 +52,7 @@ class Roles(interactions.Extension): # inherits interactions' Extension
                 
             if role is None: return # if the button is None, that means it was some other component that was interacted with and we can just return
             if role.id in ctx.author.roles: # if they already have the role we remove it
-                if role ==1025932940682739793:
+                if role.id ==1025932940682739793:
                     await ctx.send(content=f"You already accepted!", ephemeral=True)
                     return
                 await ctx.author.remove_role(role, ctx.guild.id)
