@@ -12,7 +12,7 @@ class Roles(interactions.Extension): # inherits interactions' Extension
     
     @interactions.extension_command(name="sendcomponents", default_member_permissions=interactions.Permissions.ADMINISTRATOR, scope=GUILD_ID) # This is an admin command that just sends buttons for people to press
     async def sendComponentCommand(self, ctx): # the "scope" kwarg just makes it so this is a local command not a global one btw (local to the guild/server)
-        row = [interactions.Button(style=ButtonStyle.PRIMARY, label="I have read an agree to the rules", custom_id="verify"), # actionrow requires a list of buttons. 
+        row = [interactions.Button(style=ButtonStyle.PRIMARY, label="I have read and agree to the rules", custom_id="verify"), # actionrow requires a list of buttons. 
 ]
         actionrow = interactions.ActionRow(components=row) # actionrows are rows that hold components
         await ctx.get_channel() # you must get the channel from the command context before using it
@@ -48,8 +48,13 @@ class Roles(interactions.Extension): # inherits interactions' Extension
         else:
             return
         try:
+            
+                
             if role is None: return # if the button is None, that means it was some other component that was interacted with and we can just return
             if role.id in ctx.author.roles: # if they already have the role we remove it
+                if role ==1025932940682739793:
+                    await ctx.send(content=f"You already accepted!", ephemeral=True)
+                    return
                 await ctx.author.remove_role(role, ctx.guild.id)
                 await ctx.send(content=f"I have removed the {role.name} role!", ephemeral=True, )
             else: # else we add it
