@@ -3,7 +3,10 @@ import mysql.connector
 import csv
 import asyncio
 import logging
+from interactions.ext.files import command_send, File
+import requests
 import logging.handlers
+import PIL
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 import interactions
 from interactions.api.models.misc import Overwrite
@@ -14,12 +17,12 @@ import re
 import json
 from datetime import timedelta
 from datetime import datetime
-cooldownTime = 30
+cooldownTime = 30 *60
 logger = logging.getLogger("bot")
 from interactions.ext.tasks import create_task, IntervalTrigger
 helpChannelNames = ["Ash", "Birch", "Cedar", "Dragon", "Elm", "Fir","Garjan", "Hazel", "Ivorypalm", "Juniper", "Kapok", "Locust", "Mombin","Nutmeg", "Oak", "Palm","Sapel", \
                     "Teak", "Upas", "Wingnut", "Yew", "Zelkova" ] 
-BASE_REWARD = 250
+BASE_REWARD = 150
 guild_id = 1020765433395163168 
 HELP_CHANNELS = [1024112753046208642,1024112754803613748,1024112756552634479,1024112758758846565,1024112760839217254,1024112762588246026,1024112764916080660, \
     1024112766946136115,1024112768749682698,1024112770213482659, 1024112772272889997, 1024112774219046932, 1024112776026800128, 1024112777918418944, 1024112779776507914,
@@ -30,6 +33,7 @@ dormant = 1021480689557848064
 default_role = 1020765433395163168
 occupiedChannels = (("Computer Science", 1023280589106847796), ("Software Engineering", 1023281071074324520), ("Cyber Security", 1021480634616643654), ("Networking", 1023280720833171546),("Data Science", 1023281235507814461))
 helpRoles = (1023272369919369397,1023272366656208977,1023272353104400424,1023272346762629141,1023272346762629141,1023272335660302487,1023272328248971335)
+subjectRoles= (("cybersec",1021084982434861126), ("softeng",1021076439161909278), ("network", 1021085196835094546), ("data",1021085108809236510), ("compsci", 1021076502357483520), ("computing", 1021076473068666991))
 host = "localhost"
 host = "212.111.42.251"
 load_dotenv()
@@ -42,7 +46,7 @@ def connect(host):
     con = mysql.connector.connect(
         host=host,
         user=USER,
-        passwd=PASS,
+        passwd=PASSWD,
         database="FYdatabase"
     )
     cur = con.cursor(buffered=True)
@@ -107,7 +111,7 @@ class Help(interactions.Extension):
 interactions.Option(name="amount", description="The amount of exp",required=True, type=interactions.OptionType.INTEGER)])
         async def exp(self, ctx, member, amount):
             if amount > 0:
-                await self.addExp(member, amount, ctx.guild, False)
+                await self.addExp(member, amount, False)
                 await ctx.send(f"{amount} exp added!")
             else:
                 await ctx.send("You cant add negative or 0 exp!!")
@@ -133,10 +137,10 @@ interactions.Option(name="amount", description="The amount of exp",required=True
             if int(ctx.channel.id) in HELP_CHANNELS:
                 
                 message = await ctx.channel.get_pinned_messages()
-                #message = message[0]
+                message = message[0]
                 if ctx.author.id == ctx.author.id:
 
-                    #await message.unpin()
+                    await message.unpin()
                     await ctx.send("Closing help channel.")
                     await self.markAsDormant(ctx.channel)
                 else:
@@ -163,12 +167,13 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 record = cur.fetchone()
 
             if int(ctx.channel.id) in HELP_CHANNELS:
+                print(self.questions)
                 helpers = self.questions[str(int(ctx.channel.id))]["helpers"]
                 if str(helper.id) not in helpers.keys():
                     await ctx.send("This person did not help you!")
                     return
                 
-                message = await ctx.channel.pins()
+                message = await ctx.channel.get_pinned_messages()
                 message = message[0]
                 if message.author.id == ctx.author.id:
 
@@ -184,21 +189,24 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     await ctx.send("You can't close someone elses help channel!")
             else:
                 await ctx.send("This is not a help channel!")
+            con.commit()
             con.close()
             
         @interactions.extension_command(name="rank",scope=guild_id, description="Specifies the rank of you or another member", options=[interactions.Option(name="member",description="You can specify a member you want to see the rank of",required=False,type=interactions.OptionType.USER)])
-        async def rank(self, member=None):
+        async def rank(self, ctx, member=None):
             if member is None:
                 member = ctx.author
-
-            cur.execute(f"SELECT * FROM helpLevels WHERE memberId = {member.id} AND guildId = {ctx.guild.id}") # fetching the rank info for the user
+            cur = connect(host)
+            id = int(member.id)
+            cur.execute(f"SELECT * FROM helpLevels WHERE helperId = {id}") # fetching the rank info for the user
             record = cur.fetchone()
             if record is None:
-                cur.execute("INSERT INTO helpLevels VALUES(?,?,?,?,?)", (member.id,0,0,1))
-                record = (member.id, ctx.guild.id, 0,0,1)
+                cur.execute("INSERT INTO helpLevels VALUES(%s,%s,%s,%s)", (int(member.id),0,0,0))
+                record = (int(member.id), 0,0,0)
 
-            buffer = await self.getRankImage(member, record[2], record[4], record[3], ctx.guild)
-            await ctx.send(file=File(buffer, "rank.png"))
+            buffer = await self.getRankImage(member, record[1], record[3])
+            await command_send(ctx, files=File(fp=buffer, filename="rank.png"))
+            con.commit()
             cur.close()
             con.close()
 
@@ -225,7 +233,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 
         @interactions.extension_listener()
         async def on_message_create(self, msg): # Everytime a message is sent in a channel the bot can see
-            
+            if msg.author.id == self.bot.me.id: return
             member = await interactions.get(self.bot, interactions.Member, object_id=msg.author.id, parent_id=guild_id)
 
             channel = await interactions.get(self.bot, interactions.Channel, object_id=msg.channel_id)
@@ -238,7 +246,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 guild = self.guild
                 occChannels = await self.getOccupiedChannels()
 
-
+                occupiedChannelIds = [x[1] for x in occupiedChannels]
                 avaliableOb = await interactions.get(self.bot, interactions.Channel, object_id=avaliable)
                 dormantOb = await interactions.get(self.bot, interactions.Channel, object_id=dormant)
                 
@@ -249,6 +257,8 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     try:
                         prefix = msgList[0] +" " +msgList[1]# The first word should be the subject (COMPUTER SCIENCE)
                     except:
+                        await msg.delete()
+                        await member.send("Make sure you put the subject name before your question! For example:\n\n (Software engineering) How can I use the binomial infinite series to estimate pi? \n\n")
                         return
                     subMatch = re.search("\((\D+)\)", prefix)  # Checking if the first word of the sentence is (WORD) so the person has the right syntax
                     print(prefix)
@@ -296,11 +306,11 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                             avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (SUBJECT) then your question after. \
                                                             For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?*\n\n Alternatively, if your question isnt tied to a subject just add (GENERAL)  \
                                                                 before your question for example:\n\n*(GENERAL) Where is the assembly today taking place?*\n\n hopefully someone can help!", colour=0x3ee800)
-                            await newAvaliableChannel.modify(permission_overwrites=overwrites)
-    
-                            await newAvaliableChannel.modify(parent_id=avaliable)
+                            overwrites = [Overwrite(id=cdRole, type=0, deny=1024)]
+                            await newAvaliableChannel.modify(parent_id=avaliable,permission_overwrites=overwrites)
                             await newAvaliableChannel.send(embeds=avaliableEmbed)
                             await self.cooldown(msg.author)
+                            
                         else:
                            
                             await member.send("That is not a that has been registered! If you believe this is in error tell managers to add this subject.")
@@ -309,17 +319,17 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     else:
                         await msg.delete()
                         await member.send("Make sure you put the subject name before your question! For example:\n\n (Software engineering) How can I use the binomial infinite series to estimate pi? \n\n")
-                elif channel.parent_id in occChannels:
-
+                elif channel.parent_id in occupiedChannelIds:
+                    print("hi")
                     self.questions[str(channel.id)]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
                     
-                    if str(msg.author.id) not in self.questions[str(msg.channel.id)]["helpers"].keys():
-                        self.questions[str(channel.id)]["helpers"][str(int(msg.author.id))] = 1
+                    if str(msg.author.id) not in self.questions[str(msg.channel_id)]["helpers"].keys():
+                        self.questions[str(int(channel.id))]["helpers"][str(int(msg.author.id))] = 1
                     else:
-                        self.questions[str(channel.id)]["helpers"][str(int(msg.author.id))] +=1
+                        self.questions[str(int(channel.id))]["helpers"][str(int(msg.author.id))] +=1
                     print(self.questions)
                     
-                    with open("resources/databases/questions.json", "w") as F:
+                    with open("resources/questions.json", "w") as F:
                         json.dump(self.questions, F)
 
 
@@ -329,8 +339,50 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     
                 
                     
+        @interactions.extension_listener() 
+        async def on_component(self, ctx): # activates anytime a component is interacted with
+            #These check which button was pressed and gets the corresponding role. (The custom_id of the button pressed)
+            if ctx.custom_id == "helper_role": #
+                roles = [1025913707794014259,1025913566043324417,1025913985142362112,1025907778314846239,1025913470203478036,1025914130303033405]
+                member = await interactions.get(self.bot, interactions.Member, object_id=ctx.user.id, guild_id=guild_id)
+                removed = False
+                for role in roles:
+                    if role in member.roles:
+                        removed = True
+                        await member.remove_role(role, guild_id=guild_id)
+                if removed:
+                    await ctx.send(content=f"You are no longer a helper in your subject!", ephemeral=True)
+                    return
                     
+                for role in member.roles:
+                    for subjectName, subjectRole in subjectRoles:
+
+                        if role == subjectRole:
+
+                            if subjectName == "cybersec":
+                                role = 1025914130303033405
+                            elif subjectName == "compsci":
+                                role = 1025913470203478036
+                            elif subjectName == "network":
+                                role = 1025907778314846239
+                            elif subjectName == "data":
+                                role = 1025913985142362112
+                            elif subjectRole == "computing":
+                                role = 1025913566043324417
+                            else:
+                                role = 1025913707794014259
+                            
+                            await member.add_role(role, self.guild.id)
+   
+                await ctx.send(content=f"You are now a helper in your subject!", ephemeral=True)
+  
+                    
+                    
+
                 
+                            
+                
+                    
 
 
         @create_task(IntervalTrigger(delay=60))
@@ -341,36 +393,39 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 print(v)
                 lastMessageDate = datetime(v["lastMessage"][0],v["lastMessage"][1],v["lastMessage"][2],v["lastMessage"][3],v["lastMessage"][4])
                 
-                expire = datetime.utcnow() + timedelta(minutes=2)
-                conditions = [lastMessageDate.year == expire.year, lastMessageDate.month == expire.month, lastMessageDate.day == lastMessageDate.day, lastMessageDate.hour == expire.hour, lastMessageDate.minute == expire.minute]
+                expire = lastMessageDate + timedelta(minutes=1)
+                now = datetime.utcnow()
+                deleteList = []
+                conditions = [now.year == expire.year, now.month == expire.month, now.day == expire.day, now.hour == expire.hour, now.minute == expire.minute]
+                print(now)
+                print(expire)
                 if all(conditions):
 
-                    print(lastMessageDate)
-                    print(expire)
-                    deleteList.append(k)
-                    helpers = v["helpers"]
-                    if len(helpers) == 0:
-                        pass
-                    else:
-                        highest = 0
-                        for k, v in helpers.items():
-                            if v > highest:
-                                helper = k
-                                highest = v
-                    helper = guild.get_member(helper)                       
-                    rating /= 10
-                    rating+=0.3
-                    multiplier =1+rating if rating >0.5 else 1-rating
-                    amount = BASE_REWARD*multiplier if rating != 0.5 else BASE_REWARD
-                    await self.addExp(helper, amount, ctx.guild)
-                    channel = self.bot.get_channel(int(k))
-                    message = await channel.fetch_message(int(v["messageId"]))
-                    guild = message.guild
-                    await message.unpin()
-                    await self.markAsDormant(channel)
+                    for k, v in self.questions.items():
+                        deleteList.append(k)
+                        helpers = v["helpers"]
+                        if len(helpers) == 0:
+                            pass
+                        else:
+                            highest = 0
+                            for b, j in helpers.items():
+                                if j > highest:
+                                    helper = b
+                                    highest = j
+                            helper = await interactions.get(self.bot, interactions.Member, object_id=helper, guild_id=guild_id)     
+                            rating = 5                  
+                            rating /= 10
+                            rating+=0.3
+                            multiplier =1+rating if rating >0.5 else 1-rating
+                            amount = BASE_REWARD*multiplier if rating != 0.5 else BASE_REWARD
+                            await self.addExp(helper, amount)
+                        channel = await interactions.get(self.bot, interactions.Channel, object_id=k)
+                        message = await channel.get_message(int(v["messageId"]))
+                        await message.unpin()
+                        await self.markAsDormant(channel)
                 
-            for k in deleteList:
-                del self.questions[k]
+            for n in deleteList:
+                del self.questions[n]
 
         async def cooldown(self, member):
             global cooldownTime
@@ -380,7 +435,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
             await self.guild.remove_member_role(role=self.cdRole, member_id=member.id)
 
         async def markAsDormant(self, channel): # This is to mark a channel as dormant
-            
+            cur = connect(host)
             valid = False
             print(channel.id)
             if int(channel.id) not in HELP_CHANNELS:
@@ -392,26 +447,28 @@ interactions.Option(name="amount", description="The amount of exp",required=True
             overwrite = [Overwrite(id=default_role,type=0, allow=65536),Overwrite(id=default_role,type=0, deny=2048)]
 
             await channel.modify(permission_overwrites=overwrite, parent_id=1021480689557848064)
+            con.commit()
+            con.close()
 
 
 
 
-        async def addExp(self, helper, amount, guild, natural=True):
+        async def addExp(self, helper, amount, natural=True):
             global BASE_REWARD
-            
-            cur.execute(f"SELECT * FROM helpLevels WHERE memberId = {helper.id}")
+            cur = connect(host)
+            cur.execute(f"SELECT * FROM helpLevels WHERE helperId = {helper.id}")
             record = cur.fetchone()
             if record is None:
-                cur.execute("INSERT INTO helpLevels VALUES (?,?,?,?,?)", (helper.id, guild.id, 0,0,1))
-                record = (helper.id, guild.id, 0,0,1)
+                cur.execute("INSERT INTO helpLevels VALUES (%s,%s,%s,%s)", (int(helper.id), 0,0,0))
+                record = (int(helper.id), 0,0,0)
 
 
                 
                 
-            exp = record[2]
+            exp = record[1]
             exp+=amount
-            level = baseLevel = record[4]
-            helped = record[3]
+            level = baseLevel = record[3]
+            helped = record[2]
             if natural:
                 helped+=1
             leveledUp=False
@@ -420,47 +477,38 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 exp -=1000
                 leveledUp = True
             levelDifference = level - baseLevel 
-            if leveledUp:
-
-                await helper.create_dm()
-                name = helper.name + helper.discriminator
-                buffer = await self.getRankImage(helper,  exp, level,helped, guild)
-                embed = discord.Embed(title="You leveled up!", description=f"You are now level **{level}**", colour=0x00FF00)
-                embed.set_thumbnail(url=helper.avatar_url)
-
-                await helper.dm_channel.send(embed=embed)
+            if leveledUp and level <8:
                 
-                if level//10 == 0 and level <=100:
                     
-                    if levelDifference >10:
-                        removeIndex = int((baseLevel//10)-1)
-                        index = int((level//10)-1)
-                        removeRole = guild.get_role(int(helpRoles[removeIndex][0]))
-                        role = guild.get_role(int(helpRoles[index][0]))
-                        await helper.remove_roles(removeRole)
-                        await helper.add_roles(role)
+                name = helper.user.username + helper.user.discriminator
+                buffer = await self.getRankImage(helper,  exp, level,)
+                
+                role = await interactions.get(self.bot, interactions.Role, object_id=helpRoles[level-1], guild_id=self.guild.id)
+                embed = interactions.Embed(title="You leveled up!", description=f"You are now a **{role.name}**", colour=0x00FF00)
+                embed.set_thumbnail(url=helper.user.avatar_url)
 
-                        
-                    else:
-                        index = (level/10)-1
-                        role = roles[index][0]
-                        if index == 0:
-                            pass
-                        else:
-                            removeRole = guild.get_role(roles[index-1][0])
-                            await helper.remove_roles(removeRole)
+                await helper.send(embeds=embed)
                     
-                        role = guild.get_role(role)
-                        await helper.add_roles(role)
+ 
+                removeRole = await interactions.get(self.bot, interactions.Role, object_id=helpRoles[level-2], guild_id=self.guild.id)
+                await helper.remove_role(removeRole,guild_id=guild_id)
+                    
+                
+                await helper.add_role(role,guild_id=guild_id)
+                if level == 1:
+                    embed = interactions.Embed(title="You can now become a helper", description="Helpers, get a role specific to their course and people can tag them anytime the need help. You can opt in and out of this at any time now that you are a helper!")
+                    actionrow = interactions.ActionRow(components=[interactions.Button(style=interactions.ButtonStyle.PRIMARY, custom_id="helper_role", label="Toggle helper status")])
+                    await helper.send(embeds=embed, components=[actionrow])
+            
 
-
-
-            cur.execute(f"UPDATE helpLevels SET exp = {exp}, peopleHelped = {helped}, level = {level} WHERE helperId = {helper.id}", )
-
+            id = int(helper.id)
+            cur.execute(f"UPDATE helpLevels SET exp = {exp}, peopleHelped = {helped}, level = {level} WHERE helperId = {id}", )
+            con.commit()
             cur.close()
             con.close()
 
-        async def getRankImage(self,member, exp,  level, guild):
+        async def getRankImage(self,member, exp,  level):
+                guild = self.guild
                 def drawProgressBar(d, x, y, w, h, progress, bg="black", fg="#a400fc"):
                     # draw background
                     d.ellipse((x+w, y, x+h+w, y+h), fill=bg)
@@ -472,18 +520,24 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                     d.ellipse((x+w, y, x+h+w, y+h),fill=fg)
                     d.ellipse((x, y, x+h, y+h),fill=fg)
                     d.rectangle((x+(h/2), y, x+w+(h/2), y+h),fill=fg)
-                rank = await guild.get_role(ranks[level][1])
-                if level == 5:
+                if level !=0:
+                    rank = await interactions.get(self.bot, interactions.Role, object_id=helpRoles[level-1], guild_id=guild.id)
+                else:
+                    rank = None
+                if level == 7:
                     nextRank =None
                 else:
-                    nextRank = await guild.get_role(ranks[level+1][1])
+                    nextRank = await interactions.get(self.bot, interactions.Role, object_id=helpRoles[level], guild_id=guild.id)
 
                 def conv(num):
                     blue =  num & 255
                     green = (num >> 8) & 255
                     red =   (num >> 16) & 255
-                    return (red, green, blue)   
-                rankColour = conv(rank.color)
+                    return (red, green, blue)
+                if rank is not None:  
+                    rankColour = conv(rank.color)
+                else:
+                    rankColour = (122,122,122)
 
                 
                 size = width, height = 900, 200
@@ -510,7 +564,8 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 image.paste(avatar_image, (20,35), circle_image)
                 name = member.user.username + "#" + member.user.discriminator
                 draw.multiline_text((175,35), name, font=font, fill=(0, 166, 255))
-                draw.multiline_text((175,90), rank.name, font=titlefont, fill=rankColour)
+                if rank is not None:
+                    draw.multiline_text((175,90), rank.name, font=titlefont, fill=rankColour)
                 #draw.multiline_text((662,50), f"RANK: #1", font=rankfont, fill=(0, 166, 255) ) 
                 if nextRank is not None:
                     nextRankColour = conv(nextRank.color)
