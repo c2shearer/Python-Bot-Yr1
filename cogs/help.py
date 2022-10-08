@@ -18,7 +18,7 @@ import json
 import config
 from datetime import timedelta
 from datetime import datetime
-cooldownTime = 30 *60
+cooldownTime = 60 *60
 logger = logging.getLogger("bot")
 from interactions.ext.tasks import create_task, IntervalTrigger
 helpChannelNames = ["Ash", "Birch", "Cedar", "Dragon", "Elm", "Fir","Garjan", "Hazel", "Ivorypalm", "Juniper", "Kapok", "Locust", "Mombin","Nutmeg", "Oak", "Palm","Sapel", \
@@ -315,7 +315,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                             #await newAvaliableChannel.modify(permission_overwrites=[Overwrite(id=cdRole, type=0, deny=65536), Overwrite(id=1020765433395163168, type=0, deny=67584)])  # Students should be allowed to send messages and avaliable channels should be hidden to people with the cooldown role
                             
                             avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (COURSE) then your question after. \
-                                                            For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?\n\n Helpers will get exp to level up their helper rank", colour=0x3ee800)
+                                                            For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?\n\n Helpers will get exp to level up their helper rank make sure to type /close and specify the person who helped you to close a help channel, if the issue was resolved without anyone needing to help /selfishclose will close the channel without having to specify a helper. Channels will autoclose an hour after the last message.", colour=0x3ee800)
                             overwrites = [Overwrite(id=cdRole, type=0, deny=1024)]
                             await newAvaliableChannel.modify(parent_id=avaliable,permission_overwrites=overwrites)
                             await newAvaliableChannel.send(embeds=avaliableEmbed)
@@ -403,7 +403,7 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                 print(v)
                 lastMessageDate = datetime(v["lastMessage"][0],v["lastMessage"][1],v["lastMessage"][2],v["lastMessage"][3],v["lastMessage"][4])
                 
-                expire = lastMessageDate + timedelta(minutes=1)
+                expire = lastMessageDate + timedelta(minutes=60)
                 now = datetime.utcnow()
                 deleteList = []
                 conditions = [now.year == expire.year, now.month == expire.month, now.day == expire.day, now.hour == expire.hour, now.minute == expire.minute]
