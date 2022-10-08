@@ -315,9 +315,8 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                             newAvaliableChannel = dormantChannels[0] #Selects the next dormant channel that is ready to be moved to avaliable
                             #await newAvaliableChannel.modify(permission_overwrites=[Overwrite(id=cdRole, type=0, deny=65536), Overwrite(id=1020765433395163168, type=0, deny=67584)])  # Students should be allowed to send messages and avaliable channels should be hidden to people with the cooldown role
                             
-                            avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (SUBJECT) then your question after. \
-                                                            For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?*\n\n Alternatively, if your question isnt tied to a subject just add (GENERAL)  \
-                                                                before your question for example:\n\n*(GENERAL) Where is the assembly today taking place?*\n\n hopefully someone can help!", colour=0x3ee800)
+                            avaliableEmbed = interactions.Embed(title="This help channel is avaliable!", description="To claim this help channel type (COURSE) then your question after. \
+                                                            For example: \n\n*(COMPUTER SCIENCE) Are dictionaries in python ordered or unordered?\n\n Helpers will get exp to level up their helper rank", colour=0x3ee800)
                             overwrites = [Overwrite(id=cdRole, type=0, deny=1024)]
                             await newAvaliableChannel.modify(parent_id=avaliable,permission_overwrites=overwrites)
                             await newAvaliableChannel.send(embeds=avaliableEmbed)
@@ -325,12 +324,12 @@ interactions.Option(name="amount", description="The amount of exp",required=True
                             
                         else:
                            
-                            await member.send("That is not a that has been registered! If you believe this is in error tell managers to add this subject.")
+                            await member.send("That is not a course that has been registered! If you believe this is in error tell the admins to add this course.")
                             await msg.delete()
                            
                     else:
                         await msg.delete()
-                        await member.send("Make sure you put the subject name before your question! For example:\n\n (Software engineering) How can I use the binomial infinite series to estimate pi? \n\n")
+                        await member.send("Make sure you put the subject name before your question! For example:\n\n (Software engineering) How to use var in javascript? \n\n")
                 elif channel.parent_id in occupiedChannelIds:
                     print("hi")
                     self.questions[str(channel.id)]["lastMessage"] = [now.year, now.month, now.day, now.hour, now.minute]
