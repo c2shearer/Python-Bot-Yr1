@@ -7,7 +7,6 @@ import config
 cfg = config.Get();
 
 GUILD_ID = cfg["general"]["guild_id"]
-=======
 from interactions.ext.wait_for import wait_for, setup
 import re
 GUILD_ID = 1020765433395163168
